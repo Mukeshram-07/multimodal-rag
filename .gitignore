@@ -1,0 +1,24 @@
+﻿# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+.hypothesis/
+
+# Environment files
+.env
+
+# ChromaDB persistence
+chroma_db/
+
+# Streamlit cache
+.streamlit/
+
+# IDE files
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
