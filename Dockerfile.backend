@@ -67,8 +67,4 @@ EXPOSE 8000
 
 # Development: uvicorn with --reload watches /app/src for changes.
 # Production: remove --reload and set workers > 1.
-CMD ["uvicorn", "rag.api.main:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8000", \
-     "--reload", \
-     "--reload-dir", "/app/src"]
+CMD ["sh", "-c", "uvicorn rag.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
