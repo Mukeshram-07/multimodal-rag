@@ -15,18 +15,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml ./
 COPY src ./src
 
-# Install all dependencies in ONE consistent resolver pass
+# Install PyTorch separately from PyPI CPU index
 RUN pip install --upgrade pip && \
     pip install --prefix=/install --no-cache-dir \
+    torch==2.3.0 \
+    torchvision==0.18.0 \
+    torchaudio==2.3.0 \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining dependencies from normal PyPI
+RUN pip install --prefix=/install --no-cache-dir \
     numpy==1.26.4 \
     scipy==1.11.4 \
     scikit-learn==1.4.2 \
     pandas==2.2.2 \
-    torch==2.3.0 \
-    torchvision==0.18.0 \
-    torchaudio==2.3.0 \
-    --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --prefix=/install --no-cache-dir \
     ".[dev]" \
     uvicorn==0.29.0 \
     python-multipart==0.0.9 \
@@ -51,8 +53,8 @@ COPY --from=builder /install /usr/local
 COPY src/ ./src/
 COPY pyproject.toml ./
 
-# Install package
-RUN pip install --no-cache-dir --no-deps -e .
+# Install local package
+RUN pip install --no-cache-dir -e .
 
 # ChromaDB directory
 RUN mkdir -p /app/chroma_db
