@@ -4,15 +4,18 @@ FROM python:3.11-slim AS builder
 WORKDIR /build
 ENV RENDER_CACHE_BUST=1
 
+# System packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         libgl1 \
         libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy project files
 COPY pyproject.toml ./
 COPY src ./src
 
+# Install dependencies
 RUN pip install --upgrade pip \
  && pip install --prefix=/install --no-cache-dir \
     torch torchvision torchaudio \
@@ -21,7 +24,7 @@ RUN pip install --upgrade pip \
     numpy==1.26.4 \
     scipy==1.11.4 \
     scikit-learn==1.4.2 \
-    pandas==2.2.2
+    pandas==2.2.2 \
  && pip install --prefix=/install --no-cache-dir --no-deps ".[dev]" \
  && pip install --prefix=/install --no-cache-dir \
     uvicorn==0.29.0 \
@@ -29,27 +32,36 @@ RUN pip install --upgrade pip \
     psycopg2-binary==2.9.9 \
     argon2-cffi==23.1.0
 
+# ── Runtime Image ─────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 
+# Runtime libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl1 \
         libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy installed dependencies
 COPY --from=builder /install /usr/local
 
+# Copy application source
 COPY src/ ./src/
 COPY pyproject.toml ./
 
+# Install package
 RUN pip install --no-cache-dir --no-deps -e .
 
+# ChromaDB directory
 RUN mkdir -p /app/chroma_db
 
+# HuggingFace cache
 ENV HF_HOME=/app/.cache/huggingface
 RUN mkdir -p /app/.cache/huggingface
 
+# Expose Railway port
 EXPOSE 8000
 
+# Start FastAPI app
 CMD ["sh", "-c", "uvicorn rag.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
