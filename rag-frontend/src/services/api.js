@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const BASE_URL = import.meta.env.NEXT_PUBLIC_API_URL || '/api';
 
 export const client = axios.create({ baseURL: BASE_URL, timeout: 120000 });
 
