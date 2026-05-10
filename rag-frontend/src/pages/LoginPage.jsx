@@ -22,7 +22,10 @@ export default function LoginPage() {
     setCountdown(RESEND_COOLDOWN);
     timerRef.current = setInterval(() => {
       setCountdown(c => {
-        if (c <= 1) { clearInterval(timerRef.current); return 0; }
+        if (c <= 1) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
         return c - 1;
       });
     }, 1000);
@@ -32,10 +35,14 @@ export default function LoginPage() {
 
   async function handleRequestOtp(e) {
     e?.preventDefault();
+
     setError('');
     setLoading(true);
+
     const result = await requestOtp(email);
+
     setLoading(false);
+
     if (result.error) {
       setError(result.error.message);
     } else {
@@ -47,11 +54,16 @@ export default function LoginPage() {
 
   async function handleVerifyOtp(e) {
     e?.preventDefault();
+
     if (otp.length !== 6) return;
+
     setError('');
     setLoading(true);
+
     const result = await verifyOtp(email, otp);
+
     setLoading(false);
+
     if (result.error) {
       setError(result.error.message);
       setOtp('');
@@ -59,18 +71,42 @@ export default function LoginPage() {
   }
 
   async function handleGoogleSuccess(credentialResponse) {
+    console.log("Google success response:", credentialResponse);
+
     setError('');
     setGoogleLoading(true);
-    const result = await loginWithGoogle(credentialResponse.credential);
+
+    const credential = credentialResponse?.credential;
+
+    console.log("Credential:", credential);
+
+    if (!credential) {
+      console.error("No credential received from Google");
+      setError("Google did not return a credential.");
+      setGoogleLoading(false);
+      return;
+    }
+
+    console.log("Sending credential to backend...");
+
+    const result = await loginWithGoogle(credential);
+
+    console.log("Backend login result:", result);
+
     setGoogleLoading(false);
-    if (result.error) setError(result.error.message);
-    // On success AuthContext sets user → App re-renders to AppShell
+
+    if (result.error) {
+      console.error(result.error);
+      setError(result.error.message);
+    }
   }
 
   async function handleResend() {
     if (countdown > 0) return;
+
     setError('');
     setOtp('');
+
     await handleRequestOtp();
   }
 
@@ -82,9 +118,13 @@ export default function LoginPage() {
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-2xl font-bold shadow-xl mb-3">
             R
           </div>
+
           <h1 className="text-2xl font-semibold text-slate-100">
-            {step === 'email' ? 'Sign in to RAG' : 'Check your email'}
+            {step === 'email'
+              ? 'Sign in to RAG'
+              : 'Check your email'}
           </h1>
+
           <p className="text-slate-500 text-sm mt-1">
             {step === 'email'
               ? 'Enter your email or continue with Google'
@@ -95,6 +135,7 @@ export default function LoginPage() {
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 shadow-2xl backdrop-blur">
           {step === 'email' ? (
             <div className="space-y-5">
+
               {/* Google Sign-In */}
               <div className="flex flex-col items-center gap-3">
                 {googleLoading ? (
@@ -105,7 +146,10 @@ export default function LoginPage() {
                 ) : (
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
-                    onError={() => setError('Google sign-in failed. Please try again.')}
+                    onError={() => {
+                      console.error("Google sign-in failed");
+                      setError('Google sign-in failed. Please try again.');
+                    }}
                     theme="filled_black"
                     shape="rectangular"
                     size="large"
@@ -118,14 +162,22 @@ export default function LoginPage() {
               {/* Divider */}
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-slate-800" />
-                <span className="text-xs text-slate-600">or continue with email</span>
+                <span className="text-xs text-slate-600">
+                  or continue with email
+                </span>
                 <div className="flex-1 h-px bg-slate-800" />
               </div>
 
-              {/* Email OTP form */}
-              <form onSubmit={handleRequestOtp} className="space-y-4">
+              {/* Email OTP Form */}
+              <form
+                onSubmit={handleRequestOtp}
+                className="space-y-4"
+              >
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">Email address</label>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                    Email address
+                  </label>
+
                   <input
                     type="email"
                     value={email}
@@ -153,19 +205,28 @@ export default function LoginPage() {
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Sending code…
                     </span>
-                  ) : 'Send verification code →'}
+                  ) : (
+                    'Send verification code →'
+                  )}
                 </button>
               </form>
             </div>
           ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-6">
+            <form
+              onSubmit={handleVerifyOtp}
+              className="space-y-6"
+            >
               {success && (
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-2.5 text-sm text-emerald-300 text-center">
                   {success}
                 </div>
               )}
 
-              <OtpInput value={otp} onChange={setOtp} disabled={loading} />
+              <OtpInput
+                value={otp}
+                onChange={setOtp}
+                disabled={loading}
+              />
 
               {error && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2.5 text-sm text-red-300 text-center">
@@ -183,24 +244,33 @@ export default function LoginPage() {
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Verifying…
                   </span>
-                ) : 'Verify code'}
+                ) : (
+                  'Verify code'
+                )}
               </button>
 
               <div className="flex items-center justify-between text-sm">
                 <button
                   type="button"
-                  onClick={() => { setStep('email'); setError(''); setOtp(''); }}
+                  onClick={() => {
+                    setStep('email');
+                    setError('');
+                    setOtp('');
+                  }}
                   className="text-slate-500 hover:text-slate-300"
                 >
                   ← Change email
                 </button>
+
                 <button
                   type="button"
                   onClick={handleResend}
                   disabled={countdown > 0}
                   className="text-violet-400 hover:text-violet-300 disabled:text-slate-600 disabled:cursor-not-allowed"
                 >
-                  {countdown > 0 ? `Resend in ${countdown}s` : 'Resend code'}
+                  {countdown > 0
+                    ? `Resend in ${countdown}s`
+                    : 'Resend code'}
                 </button>
               </div>
             </form>
