@@ -70,8 +70,13 @@ def send_otp_email(to_email: str, otp: str) -> bool:
         if resp.status_code in (200, 201):
             logger.info("OTP email sent: to=%s", to_email)
             return True
-        logger.error("Resend API error: status=%d body=%s", resp.status_code, resp.text[:200])
+        logger.error(
+            "Resend API error: status=%d body=%s headers=%s",
+            resp.status_code,
+            resp.text,
+        dict(resp.headers),
+        )
         return False
     except Exception as exc:
-        logger.error("Email send failed: %s", exc)
+        logger.exception("Email send failed")
         return False
