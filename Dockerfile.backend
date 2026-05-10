@@ -25,12 +25,15 @@ COPY src ./src
 # Install the project and all runtime dependencies into /install.
 # --no-build-isolation is needed because setuptools is already present.
 RUN pip install --upgrade pip \
+ && pip install --prefix=/install --no-cache-dir \
+    torch torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/cpu \
  && pip install --prefix=/install --no-cache-dir ".[dev]" \
  && pip install --prefix=/install --no-cache-dir \
-        uvicorn[standard]==0.29.0 \
-        python-multipart==0.0.9 \
-        psycopg2-binary==2.9.9 \
-        argon2-cffi==23.1.0
+    uvicorn==0.29.0 \
+    python-multipart==0.0.9 \
+    psycopg2-binary==2.9.9 \
+    argon2-cffi==23.1.0
 
 # ── Stage 2: runtime image ────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
