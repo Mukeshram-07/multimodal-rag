@@ -33,6 +33,7 @@ RUN pip install --upgrade pip && \
     transformers==4.41.2 \
     sentence-transformers==2.7.0 \
     chromadb \
+    PyMuPDF \
     sqlalchemy \
     alembic \
     python-jose[cryptography] \
