@@ -25,7 +25,7 @@ RUN pip install --upgrade pip \
     scipy==1.11.4 \
     scikit-learn==1.4.2 \
     pandas==2.2.2 \
- && pip install --prefix=/install --no-cache-dir --no-deps ".[dev]" \
+&& pip install --prefix=/install --no-cache-dir ".[dev]" \
  && pip install --prefix=/install --no-cache-dir \
     uvicorn==0.29.0 \
     python-multipart==0.0.9 \
