@@ -15,25 +15,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml ./
 COPY src ./src
 
-# Install PyTorch separately from PyPI CPU index
+# Install ALL dependencies in ONE resolver pass
 RUN pip install --upgrade pip && \
     pip install --prefix=/install --no-cache-dir \
-    torch==2.3.0 \
-    torchvision==0.18.0 \
-    torchaudio==2.3.0 \
-    --index-url https://download.pytorch.org/whl/cpu
-
-# Install remaining dependencies from normal PyPI
-RUN pip install --prefix=/install --no-cache-dir \
     numpy==1.26.4 \
     scipy==1.11.4 \
     scikit-learn==1.4.2 \
     pandas==2.2.2 \
-    ".[dev]" \
+    torch==2.3.0 \
+    torchvision==0.18.0 \
+    torchaudio==2.3.0 \
+    fastapi \
     uvicorn==0.29.0 \
     python-multipart==0.0.9 \
     psycopg2-binary==2.9.9 \
-    argon2-cffi==23.1.0
+    argon2-cffi==23.1.0 \
+    sentence-transformers \
+    chromadb \
+    --extra-index-url https://download.pytorch.org/whl/cpu
 
 # ── Runtime Image ─────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
@@ -53,8 +52,8 @@ COPY --from=builder /install /usr/local
 COPY src/ ./src/
 COPY pyproject.toml ./
 
-# Install local package
-RUN pip install --no-cache-dir -e .
+# Install local package WITHOUT re-resolving dependencies
+RUN pip install --no-cache-dir --no-deps -e .
 
 # ChromaDB directory
 RUN mkdir -p /app/chroma_db
