@@ -36,6 +36,9 @@ RUN pip install --upgrade pip && \
     alembic \
     python-jose[cryptography] \
     passlib[bcrypt]
+    email-validator \
+    pydantic-settings \
+    python-dotenv \
     --extra-index-url https://download.pytorch.org/whl/cpu
 
 # ── Runtime Image ─────────────────────────────────────────────────────────────
