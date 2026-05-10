@@ -40,6 +40,9 @@ RUN pip install --upgrade pip && \
     email-validator \
     pydantic-settings \
     python-dotenv \
+    google-auth \
+    google-auth-oauthlib \
+    google-api-python-client \
     --extra-index-url https://download.pytorch.org/whl/cpu
 
 # ── Runtime Image ─────────────────────────────────────────────────────────────
