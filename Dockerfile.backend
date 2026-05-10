@@ -35,7 +35,8 @@ RUN pip install --upgrade pip && \
     sqlalchemy \
     alembic \
     python-jose[cryptography] \
-    passlib[bcrypt]
+    passlib[bcrypt] \
+    bcrypt \
     email-validator \
     pydantic-settings \
     python-dotenv \
