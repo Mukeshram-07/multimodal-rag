@@ -1,29 +1,18 @@
 # ── Backend Dockerfile ────────────────────────────────────────────────────────
-# Multi-stage build:
-#   builder  – installs Python dependencies into a clean prefix
-#   runtime  – copies only the installed packages + source, no build tools
-#
-# The image is intentionally kept small: no .venv, no test deps, no caches.
-# ──────────────────────────────────────────────────────────────────────────────
-
-# ── Stage 1: dependency builder ───────────────────────────────────────────────
 FROM python:3.11-slim AS builder
 
 WORKDIR /build
 ENV RENDER_CACHE_BUST=1
-# System packages needed to compile some Python wheels (PyMuPDF, chromadb, etc.)
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         libgl1 \
         libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only the project metadata first so Docker can cache the pip install
-# layer independently of source code changes.
 COPY pyproject.toml ./
 COPY src ./src
-# Install the project and all runtime dependencies into /install.
-# --no-build-isolation is needed because setuptools is already present.
+
 RUN pip install --upgrade pip \
  && pip install --prefix=/install --no-cache-dir \
     torch torchvision torchaudio \
@@ -35,39 +24,27 @@ RUN pip install --upgrade pip \
     psycopg2-binary==2.9.9 \
     argon2-cffi==23.1.0
 
-# ── Stage 2: runtime image ────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 
-# Runtime system libraries (no build tools)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl1 \
         libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
-# Copy application source
 COPY src/ ./src/
 COPY pyproject.toml ./
 
-# Install the package in editable-equivalent mode so imports resolve correctly.
-# We use --no-deps because all deps are already in /usr/local from the builder.
 RUN pip install --no-cache-dir --no-deps -e .
 
-# ChromaDB persistence directory — override with CHROMA_PERSIST_DIR env var
-# or mount a volume at /app/chroma_db.
 RUN mkdir -p /app/chroma_db
 
-# Sentence-transformers model cache — mount a volume here to avoid
-# re-downloading the model on every container restart.
 ENV HF_HOME=/app/.cache/huggingface
 RUN mkdir -p /app/.cache/huggingface
 
 EXPOSE 8000
 
-# Development: uvicorn with --reload watches /app/src for changes.
-# Production: remove --reload and set workers > 1.
-CMD ["uvicorn", "rag.api.main:app", "--host", "0.0.0.0", "--port", "10000"]
+CMD ["sh", "-c", "uvicorn rag.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
