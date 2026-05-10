@@ -15,18 +15,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml ./
 COPY src ./src
 
-# Install dependencies
-RUN pip install --upgrade pip \
- && pip install --prefix=/install --no-cache-dir \
-    torch torchvision torchaudio \
-    --index-url https://download.pytorch.org/whl/cpu \
- && pip install --prefix=/install --no-cache-dir \
+# Install all dependencies in ONE consistent resolver pass
+RUN pip install --upgrade pip && \
+    pip install --prefix=/install --no-cache-dir \
     numpy==1.26.4 \
     scipy==1.11.4 \
     scikit-learn==1.4.2 \
     pandas==2.2.2 \
-&& pip install --prefix=/install --no-cache-dir ".[dev]" \
- && pip install --prefix=/install --no-cache-dir \
+    torch==2.3.0 \
+    torchvision==0.18.0 \
+    torchaudio==2.3.0 \
+    --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --prefix=/install --no-cache-dir \
+    ".[dev]" \
     uvicorn==0.29.0 \
     python-multipart==0.0.9 \
     psycopg2-binary==2.9.9 \
@@ -60,7 +61,7 @@ RUN mkdir -p /app/chroma_db
 ENV HF_HOME=/app/.cache/huggingface
 RUN mkdir -p /app/.cache/huggingface
 
-# Expose Railway port
+# Railway port
 EXPOSE 8000
 
 # Start FastAPI app
