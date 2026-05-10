@@ -35,6 +35,7 @@ RUN pip install --upgrade pip && \
     sqlalchemy \
     alembic \
     python-jose[cryptography] \
+    passlib[bcrypt]
     --extra-index-url https://download.pytorch.org/whl/cpu
 
 # ── Runtime Image ─────────────────────────────────────────────────────────────
