@@ -63,11 +63,11 @@ RUN mkdir -p /app/chroma_db
 
 # Sentence-transformers model cache — mount a volume here to avoid
 # re-downloading the model on every container restart.
-ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
+ENV HF_HOME=/app/.cache/huggingface
 RUN mkdir -p /app/.cache/huggingface
 
 EXPOSE 8000
 
 # Development: uvicorn with --reload watches /app/src for changes.
 # Production: remove --reload and set workers > 1.
-CMD ["sh", "-c", "uvicorn rag.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["uvicorn", "rag.api.main:app", "--host", "0.0.0.0", "--port", "10000"]
