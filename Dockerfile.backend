@@ -17,6 +17,10 @@ RUN pip install --upgrade pip \
  && pip install --prefix=/install --no-cache-dir \
     torch torchvision torchaudio \
     --index-url https://download.pytorch.org/whl/cpu \
+ && pip install --prefix=/install --no-cache-dir \
+    numpy==1.26.4 \
+    scipy==1.11.4 \
+    scikit-learn==1.4.2 \
  && pip install --prefix=/install --no-cache-dir ".[dev]" \
  && pip install --prefix=/install --no-cache-dir \
     uvicorn==0.29.0 \
