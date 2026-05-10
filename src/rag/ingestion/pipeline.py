@@ -50,7 +50,12 @@ class IngestionPipeline:
         self._embedding_service = embedding_service
         self._vector_store = vector_store
 
-    def ingest(self, file_path: str, collection_name: str) -> IngestionResult:
+    def ingest(
+        self,
+        file_path: str,
+        collection_name: str,
+        source_filename: str | None = None,
+    ) -> IngestionResult:
         """
         Ingest a PDF document into the vector store.
 
@@ -63,8 +68,12 @@ class IngestionPipeline:
         status message — does NOT raise an exception.
 
         Args:
-            file_path:       Absolute or relative path to the PDF file.
-            collection_name: Name of the collection to store chunks in.
+            file_path:        Absolute or relative path to the PDF file.
+            collection_name:  Name of the collection to store chunks in.
+            source_filename:  Original filename to use in chunk metadata and
+                              citations. When omitted, falls back to the
+                              basename of ``file_path`` (which may be a temp
+                              file name when called from the API route).
 
         Returns:
             An ``IngestionResult`` with ``status``, ``chunk_count``, and
@@ -74,7 +83,10 @@ class IngestionPipeline:
             IngestionError: If the PDF cannot be parsed.
             EmbeddingError: If the embedding service fails.
         """
-        filename = Path(file_path).name
+        # Use the caller-supplied original filename when available so that
+        # chunk metadata and citations show the real document name rather
+        # than a temp file name like "tmpXXXXXX.pdf".
+        filename = source_filename or Path(file_path).name
         start_time = time.monotonic()
 
         logger.info(

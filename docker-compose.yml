@@ -1,0 +1,135 @@
+# ── Multimodal RAG System — Docker Compose ────────────────────────────────────
+#
+# Services
+# ────────
+#   postgres  PostgreSQL 16 (user data, collections ownership)
+#   backend   FastAPI + uvicorn (hot-reload in dev)
+#   frontend  Vite dev server (HMR in dev)
+#
+# Ollama runs on the HOST machine, not inside Docker.
+#
+# Usage
+# ─────
+#   docker compose up --build          # first run
+#   docker compose up                  # subsequent runs
+#   docker compose down -v             # stop and remove volumes
+#
+# ──────────────────────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: rag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rag
+      POSTGRES_PASSWORD: ragpassword
+      POSTGRES_DB: ragdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rag_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rag -d ragdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── FastAPI backend ──────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: rag-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src:ro
+      - chroma_data:/app/chroma_db
+      - model_cache:/app/.cache/huggingface
+    environment:
+      # ── Application settings ──────────────────────────────────────────────
+      CHROMA_PERSIST_DIR: /app/chroma_db
+      EMBEDDING_MODEL: all-MiniLM-L6-v2
+      CHUNK_SIZE: "512"
+      CHUNK_OVERLAP: "64"
+      TOP_K: "5"
+      LOG_LEVEL: INFO
+      APP_VERSION: "0.1.0"
+      # ── Database ──────────────────────────────────────────────────────────
+      DATABASE_URL: postgresql://rag:ragpassword@postgres:5432/ragdb
+      # ── Auth ──────────────────────────────────────────────────────────────
+      # IMPORTANT: change JWT_SECRET_KEY to a long random string in production!
+      JWT_SECRET_KEY: "dev-secret-change-in-production-use-openssl-rand-hex-32"
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRE_MINUTES: "1440"
+      # ── Email (Resend API) ────────────────────────────────────────────────
+      # Set RESEND_API_KEY to enable real email delivery.
+      # Without it, OTPs are printed to the backend console (dev mode).
+      RESEND_API_KEY: "re_5Fy8fdZE_Gqfev6gb1cuGwFSDnhynKZVr"
+      EMAIL_FROM: "onboarding@resend.dev"
+      # ── Google OAuth ──────────────────────────────────────────────────────
+      GOOGLE_CLIENT_ID: "726210927413-g61t7jg552nn8b578bsh67hckkkkkho6.apps.googleusercontent.com"
+      # ── LLM — GroqCloud (default) ─────────────────────────────────────────
+      # Switch to Ollama by changing LLM_PROVIDER=ollama and updating the URL.
+      LLM_PROVIDER: groq
+      LLM_API_BASE: https://api.groq.com/openai/v1
+      LLM_MODEL: llama-3.3-70b-versatile
+      LLM_API_KEY: ${LLM_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rag_net
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ── React / Vite frontend ────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./rag-frontend
+      dockerfile: ../Dockerfile.frontend
+    container_name: rag-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./rag-frontend/src:/app/src:ro
+      - ./rag-frontend/public:/app/public:ro
+      - ./rag-frontend/index.html:/app/index.html:ro
+      - ./rag-frontend/tailwind.config.js:/app/tailwind.config.js:ro
+      - ./rag-frontend/postcss.config.js:/app/postcss.config.js:ro
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
+      # Set your Google OAuth client ID here for Docker dev
+      VITE_GOOGLE_CLIENT_ID: "726210927413-g61t7jg552nn8b578bsh67hckkkkkho6.apps.googleusercontent.com"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - rag_net
+
+# ── Named volumes ──────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  chroma_data:
+    driver: local
+  model_cache:
+    driver: local
+
+# ── Networks ───────────────────────────────────────────────────────────────────
+networks:
+  rag_net:
+    driver: bridge

@@ -1,0 +1,43 @@
+# ── Frontend Production Dockerfile ───────────────────────────────────────────
+# Two-stage build:
+#   builder  — installs deps and builds the Vite app
+#   runtime  — serves dist/ with nginx (tiny image, no Node.js)
+#
+# Build args (pass at build time):
+#   VITE_GOOGLE_CLIENT_ID   — Google OAuth client ID
+#   VITE_API_BASE_URL       — Backend URL (e.g. https://api.yourdomain.com)
+# ──────────────────────────────────────────────────────────────────────────────
+
+FROM node:20-slim AS builder
+
+WORKDIR /app
+
+ARG VITE_GOOGLE_CLIENT_ID=""
+ARG VITE_API_BASE_URL=""
+
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
+COPY package.json package-lock.json ./
+RUN npm ci --legacy-peer-deps
+
+COPY . ./
+RUN npm run build
+
+# ── Runtime: nginx ────────────────────────────────────────────────────────────
+FROM nginx:alpine AS runtime
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# SPA routing: all paths fall back to index.html
+RUN printf 'server {\n\
+  listen 80;\n\
+  root /usr/share/nginx/html;\n\
+  index index.html;\n\
+  location / {\n\
+    try_files $uri $uri/ /index.html;\n\
+  }\n\
+}\n' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

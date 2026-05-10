@@ -112,6 +112,9 @@ class ResponseGenerator:
             len(search_results),
             len(prompt),
         )
+        # Debug: log the first 400 chars of the prompt so we can verify
+        # context text is actually present before the LLM call.
+        logger.debug("Prompt preview (first 400 chars):\n%s", prompt[:400])
 
         answer = self._llm.complete(prompt)
 

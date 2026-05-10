@@ -1,0 +1,52 @@
+# ── Root .dockerignore ────────────────────────────────────────────────────────
+# Applied when building Dockerfile.backend (context = project root).
+
+# Python virtual environment — never copy into the image
+.venv/
+venv/
+env/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Test artefacts
+.pytest_cache/
+.hypothesis/
+htmlcov/
+.coverage
+coverage.xml
+
+# ChromaDB data — mounted as a named volume at runtime
+chroma_db/
+
+# Model cache — mounted as a named volume at runtime
+.cache/
+
+# Frontend — not needed in the backend image
+# (The frontend has its own build context: ./rag-frontend)
+node_modules/
+
+# IDE / OS
+.git/
+.gitignore
+.kiro/
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# Docker files themselves (no need to copy into image)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Docs / specs
+*.md

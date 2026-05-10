@@ -1,0 +1,23 @@
+# ── rag-frontend/.dockerignore ────────────────────────────────────────────────
+# Applied when building Dockerfile.frontend (context = project root,
+# but only rag-frontend/ files are COPYed).
+
+node_modules/
+dist/
+.vite/
+.vite-temp/
+
+# Environment files — injected at runtime via docker-compose environment:
+.env
+.env.local
+.env.*.local
+
+# Caches
+*.log
+npm-debug.log*
+
+# IDE / OS
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db

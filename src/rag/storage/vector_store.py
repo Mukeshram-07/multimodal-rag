@@ -186,6 +186,81 @@ class VectorStore:
         )
         return search_results
 
+    def get_sequential(
+        self,
+        collection_name: str,
+        limit: int,
+        filter_source: str | None = None,
+    ) -> list[SearchResult]:
+        """
+        Retrieve chunks in document order (by chunk_index ascending).
+
+        Used for summary-mode retrieval where broad sequential coverage
+        matters more than semantic similarity to a specific query.
+
+        Args:
+            collection_name: Name of the collection to read from.
+            limit:           Maximum number of chunks to return.
+            filter_source:   If provided, restrict to chunks from this source.
+
+        Returns:
+            A list of ``SearchResult`` objects ordered by ascending chunk_index.
+            Score is set to 1.0 for all results (positional, not similarity).
+            Returns an empty list if the collection does not exist.
+        """
+        try:
+            collection = self._client.get_collection(
+                name=collection_name,
+                embedding_function=None,
+            )
+        except (InvalidCollectionException, ValueError):
+            logger.info(
+                "get_sequential: collection '%s' does not exist; returning empty list.",
+                collection_name,
+            )
+            return []
+
+        item_count = collection.count()
+        if item_count == 0:
+            return []
+
+        effective_limit = min(limit, item_count)
+
+        get_kwargs: dict = {
+            "limit": effective_limit,
+            "include": ["documents", "metadatas"],
+        }
+        if filter_source is not None:
+            get_kwargs["where"] = {"source": filter_source}
+
+        raw = collection.get(**get_kwargs)
+
+        # Pair up and sort by chunk_index so we get document-order coverage.
+        items = list(zip(raw["documents"], raw["metadatas"]))
+        items.sort(key=lambda x: int(x[1].get("chunk_index", 0)))
+
+        results: list[SearchResult] = []
+        for doc, meta in items:
+            chunk = Chunk(
+                text=doc,
+                metadata=DocumentMetadata(
+                    source=meta["source"],
+                    page=int(meta["page"]),
+                    chunk_index=int(meta["chunk_index"]),
+                ),
+            )
+            # Score 1.0 signals "positional retrieval" to callers.
+            results.append(SearchResult(chunk=chunk, score=1.0))
+
+        logger.info(
+            "get_sequential: collection=%s filter_source=%s limit=%d returned=%d",
+            collection_name,
+            filter_source,
+            limit,
+            len(results),
+        )
+        return results
+
     def list_collections(self) -> list[str]:
         """
         Return the names of all collections in the store.

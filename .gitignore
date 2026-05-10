@@ -1,24 +1,39 @@
-﻿# Virtual environment
-.venv/
-
-# Python cache
+﻿.kiro/
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.venv/
+pytest_cache/
 .pytest_cache/
 .hypothesis/
 
-# Environment files
-.env
+# Node
+node_modules/
+rag-frontend/node_modules/
 
-# ChromaDB persistence
+# Environment
+.env
+.env.docker
+
+# Database
+*.db
 chroma_db/
 
-# Streamlit cache
-.streamlit/
+# Logs
+*.log
 
-# IDE files
-.vscode/
-
-# OS files
+# OS
 .DS_Store
 Thumbs.db
+
+# VSCode
+.vscode/
+
+# Build
+dist/
+build/
+
+# Misc
+project_structure.txt

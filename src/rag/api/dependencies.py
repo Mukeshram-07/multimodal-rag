@@ -69,5 +69,6 @@ def get_response_generator() -> ResponseGenerator:
         api_base=settings.llm_api_base,
         model=settings.llm_model,
         api_key=settings.llm_api_key,
+        provider=settings.llm_provider,
     )
     return ResponseGenerator(llm_backend=llm)

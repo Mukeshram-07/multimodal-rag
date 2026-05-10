@@ -1,0 +1,30 @@
+# ── Frontend Dockerfile ───────────────────────────────────────────────────────
+# Development image: runs the Vite dev server with HMR.
+#
+# Build context: ./rag-frontend  (set in docker-compose.yml)
+# All COPY paths are relative to that directory — no rag-frontend/ prefix.
+#
+# For production, swap the CMD for `npm run build` and serve dist/ with nginx.
+# ──────────────────────────────────────────────────────────────────────────────
+
+FROM node:20-slim
+
+WORKDIR /app
+
+# Copy package manifests first so Docker can cache the npm install layer
+# independently of source code changes.
+COPY package.json package-lock.json ./
+
+# Install dependencies.
+# --legacy-peer-deps avoids resolution conflicts with React 19 peer deps.
+RUN npm ci --legacy-peer-deps
+
+# Copy the rest of the frontend source.
+# node_modules is excluded by rag-frontend/.dockerignore so this is fast.
+COPY . ./
+
+EXPOSE 5173
+
+# Vite must bind to 0.0.0.0 inside the container so the port is reachable
+# from the host.  The --host flag enables this.
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

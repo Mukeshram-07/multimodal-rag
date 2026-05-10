@@ -245,3 +245,169 @@ def test_status_ok_when_results_found(tmp_chroma_dir: Path) -> None:
     result = retriever.retrieve("query", "col", top_k=5)
 
     assert result.status == "ok"
+
+
+# ---------------------------------------------------------------------------
+# Summary-mode detection tests
+# ---------------------------------------------------------------------------
+
+
+from rag.retrieval.retriever import _is_summary_query  # noqa: E402
+
+
+class TestSummaryQueryDetection:
+    """_is_summary_query correctly identifies summary-style queries."""
+
+    def test_summarize_detected(self) -> None:
+        assert _is_summary_query("summarize this document")
+
+    def test_summarise_british_spelling(self) -> None:
+        assert _is_summary_query("please summarise the paper")
+
+    def test_summary_noun(self) -> None:
+        assert _is_summary_query("give me a summary")
+
+    def test_overview(self) -> None:
+        assert _is_summary_query("give an overview of this article")
+
+    def test_what_is_this_about(self) -> None:
+        assert _is_summary_query("what is this document about")
+
+    def test_main_topic(self) -> None:
+        assert _is_summary_query("what is the main topic")
+
+    def test_key_findings(self) -> None:
+        assert _is_summary_query("what are the key findings")
+
+    def test_describe_this_paper(self) -> None:
+        assert _is_summary_query("describe this paper")
+
+    def test_tell_me_about_this(self) -> None:
+        assert _is_summary_query("tell me about this")
+
+    def test_factual_query_not_detected(self) -> None:
+        assert not _is_summary_query("what is the capital of France?")
+
+    def test_specific_question_not_detected(self) -> None:
+        assert not _is_summary_query("what year was the model trained?")
+
+    def test_how_does_it_work_not_detected(self) -> None:
+        assert not _is_summary_query("how does the attention mechanism work?")
+
+    def test_empty_string_not_detected(self) -> None:
+        assert not _is_summary_query("")
+
+    def test_case_insensitive(self) -> None:
+        assert _is_summary_query("SUMMARIZE THIS DOCUMENT")
+        assert _is_summary_query("Give Me An Overview")
+
+
+# ---------------------------------------------------------------------------
+# Summary-mode retrieval tests
+# ---------------------------------------------------------------------------
+
+
+class TestSummaryModeRetrieval:
+    """Retriever uses sequential chunk fetching for summary queries."""
+
+    def test_summary_query_returns_results(self, tmp_chroma_dir: Path) -> None:
+        store = VectorStore(persist_directory=str(tmp_chroma_dir))
+        chunks = [_make_chunk(f"content of chunk {i}", chunk_index=i) for i in range(10)]
+        _seed_collection(store, "col", chunks)
+
+        retriever = Retriever(
+            embedding_service=_make_mock_embedding_service(),
+            vector_store=store,
+        )
+        result = retriever.retrieve("summarize this document", "col", top_k=5)
+
+        assert len(result.chunks) > 0
+
+    def test_summary_mode_returns_at_least_summary_chunk_count(self, tmp_chroma_dir: Path) -> None:
+        """Summary mode fetches more chunks than the default top_k."""
+        from rag.retrieval.retriever import _SUMMARY_CHUNK_COUNT
+        store = VectorStore(persist_directory=str(tmp_chroma_dir))
+        # Seed more chunks than _SUMMARY_CHUNK_COUNT
+        n = _SUMMARY_CHUNK_COUNT + 5
+        chunks = [_make_chunk(f"chunk {i}", chunk_index=i) for i in range(n)]
+        _seed_collection(store, "col", chunks)
+
+        retriever = Retriever(
+            embedding_service=_make_mock_embedding_service(),
+            vector_store=store,
+        )
+        result = retriever.retrieve("give me an overview", "col", top_k=5)
+
+        # Should return at least _SUMMARY_CHUNK_COUNT (not just top_k=5)
+        assert len(result.chunks) >= _SUMMARY_CHUNK_COUNT
+
+    def test_summary_mode_chunks_ordered_by_chunk_index(self, tmp_chroma_dir: Path) -> None:
+        """Summary mode returns chunks in document order (ascending chunk_index)."""
+        store = VectorStore(persist_directory=str(tmp_chroma_dir))
+        chunks = [_make_chunk(f"chunk {i}", chunk_index=i) for i in range(8)]
+        _seed_collection(store, "col", chunks)
+
+        retriever = Retriever(
+            embedding_service=_make_mock_embedding_service(),
+            vector_store=store,
+        )
+        result = retriever.retrieve("summarize this document", "col", top_k=8)
+
+        indices = [sr.chunk.metadata.chunk_index for sr in result.chunks]
+        assert indices == sorted(indices), f"Expected sorted indices, got {indices}"
+
+    def test_summary_mode_status_contains_summary(self, tmp_chroma_dir: Path) -> None:
+        """Summary mode status string indicates the retrieval mode used."""
+        store = VectorStore(persist_directory=str(tmp_chroma_dir))
+        chunks = [_make_chunk("text", chunk_index=i) for i in range(3)]
+        _seed_collection(store, "col", chunks)
+
+        retriever = Retriever(
+            embedding_service=_make_mock_embedding_service(),
+            vector_store=store,
+        )
+        result = retriever.retrieve("give me a summary", "col", top_k=5)
+
+        assert "summary" in result.status.lower()
+
+    def test_semantic_query_does_not_use_summary_mode(self, tmp_chroma_dir: Path) -> None:
+        """A factual query uses semantic mode and returns status 'ok'."""
+        store = VectorStore(persist_directory=str(tmp_chroma_dir))
+        chunks = [_make_chunk(f"chunk {i}", chunk_index=i) for i in range(5)]
+        _seed_collection(store, "col", chunks)
+
+        retriever = Retriever(
+            embedding_service=_make_mock_embedding_service(),
+            vector_store=store,
+        )
+        result = retriever.retrieve("what is the capital of France?", "col", top_k=5)
+
+        assert result.status == "ok"
+
+    def test_summary_mode_respects_filter_source(self, tmp_chroma_dir: Path) -> None:
+        """Summary mode honours filter_source."""
+        store = VectorStore(persist_directory=str(tmp_chroma_dir))
+        chunks_a = [_make_chunk(f"a {i}", source="a.pdf", chunk_index=i) for i in range(5)]
+        chunks_b = [_make_chunk(f"b {i}", source="b.pdf", chunk_index=i) for i in range(5)]
+        _seed_collection(store, "col", chunks_a + chunks_b)
+
+        retriever = Retriever(
+            embedding_service=_make_mock_embedding_service(),
+            vector_store=store,
+        )
+        result = retriever.retrieve("summarize this document", "col", top_k=5, filter_source="a.pdf")
+
+        assert all(sr.chunk.metadata.source == "a.pdf" for sr in result.chunks)
+
+    def test_summary_mode_empty_collection_returns_empty(self, tmp_chroma_dir: Path) -> None:
+        """Summary mode on a missing collection returns empty result gracefully."""
+        store = VectorStore(persist_directory=str(tmp_chroma_dir))
+
+        retriever = Retriever(
+            embedding_service=_make_mock_embedding_service(),
+            vector_store=store,
+        )
+        result = retriever.retrieve("summarize this document", "nonexistent", top_k=5)
+
+        assert result.chunks == []
+        assert len(result.status) > 0
