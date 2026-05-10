@@ -22,15 +22,16 @@ RUN pip install --upgrade pip && \
     scipy==1.11.4 \
     scikit-learn==1.4.2 \
     pandas==2.2.2 \
-    torch==2.3.0 \
-    torchvision==0.18.0 \
-    torchaudio==2.3.0 \
+    torch==2.4.0 \
+    torchvision==0.19.0 \
+    torchaudio==2.4.0 \
     fastapi \
     uvicorn==0.29.0 \
     python-multipart==0.0.9 \
     psycopg2-binary==2.9.9 \
     argon2-cffi==23.1.0 \
-    sentence-transformers \
+    transformers==4.41.2 \
+    sentence-transformers==2.7.0 \
     chromadb \
     sqlalchemy \
     alembic \
